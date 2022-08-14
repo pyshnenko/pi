@@ -1,6 +1,8 @@
 require('dotenv').config();
 const { Telegraf } = require('telegraf');
 const bot = new Telegraf(process.env.TG_TOKEN);
+const axiosUrl = 'http://45.89.66.91:4014/api';
+const axiosToken = process.env.AXIOS_TOKEN;
 const Markup = require("telegraf/markup.js");
 const Gpio = require('pigpio').Gpio;
 const os = require( 'os' );
@@ -24,6 +26,23 @@ let newAdmin = {
 	idDelete:[]
 }
 let timeDelay = 500;
+
+var photoUrl = {
+	id: [],
+	url: []
+};
+
+const configR = {
+	lang: "rus",
+	oem: 1,
+	psm: 3,
+};
+
+const configE = {
+	lang: "eng",
+	oem: 1,
+	psm: 3,
+};
 
 fs.access("admins.txt", function(error){
     if (error) {
@@ -52,6 +71,16 @@ fs.access("logFile.txt", function(error){
     if (error) {
         console.log("Файл не найден");
 		fs.open('logFile.txt', 'w', (err) => {
+			if(err) throw err;
+			console.log('File created');
+		});
+    }
+});
+
+fs.access("logFilePhoto.txt", function(error){
+    if (error) {
+        console.log("Файл не найден");
+		fs.open('logFilePhoto.txt', 'w', (err) => {
 			if(err) throw err;
 			console.log('File created');
 		});
@@ -99,6 +128,31 @@ bot.start((ctx) => {
 
 bot.help((ctx) => ctx.reply('Данный бот умеет открывать шлагбаум и сообщать погоду\nЕсли клавиатура не появилась, нажми старт или сообщи администратору\nЧтобы узнать погоду, введи название города'));
 
+bot.on('photo', async (ctx) => {	
+	photoUrl.id.push(ctx.from.id);
+	photoUrl.url.push(ctx.message.photo[2].file_id);
+	ctx.replyWithHTML(
+		'Выбери язык:\n',
+		Markup.inlineKeyboard([
+			Markup.callbackButton('Русский', 'rusOCR'),
+			Markup.callbackButton('Английский', 'engOCR')
+		], {columns: 2}).extra());
+	
+	if ((logSet)&&(!admin.includes(ctx.from.id))) {
+		let time = new Date();
+		fs.appendFile("logFile.txt", `${time.getDay()}-${time.getMonth()+1}-${time.getYear()} ${time.getHours()}:${time.getMinutes()} - ${ctx.from.id} - ${ctx.from.first_name} ${ctx.from.last_name}: распознавание\n`, function(error){
+			if(error) throw error;
+		});
+	}
+	
+	if ((logSet)&&(!admin.includes(ctx.from.id))) {
+		let time = new Date();
+		fs.appendFile("logFilePhoto.txt", `${time.getDay()}-${time.getMonth()+1}-${time.getYear()} ${time.getHours()}:${time.getMinutes()} - ${ctx.from.id} - ${ctx.from.first_name} ${ctx.from.last_name}: ${ctx.message.photo[2].file_id}\n`, function(error){
+			if(error) throw error;
+		});
+	}
+});
+
 bot.on('text', async ctx => {
 	console.log(ctx.message.text);
 	console.log('id: '+ctx.from.id);
@@ -144,7 +198,14 @@ bot.on('text', async ctx => {
 	{
 		trimB = false;
 		let buf = fs.readFileSync("logFile.txt", "utf8");
-		ctx.reply(buf.slice(-1800));
+		buf.length >1 ? ctx.reply(buf.slice(-1800)) : ctx.reply('нет записей');
+	}
+	
+	if ((admin.includes(ctx.from.id))&&(ctx.message.text==='$!~фотоЛог'))
+	{
+		trimB = false;
+		let buf = fs.readFileSync("logFilePhoto.txt", "utf8");
+		buf.length >1 ? ctx.reply(buf.slice(-1800)) : ctx.reply('нет записей');
 	}
 	
 	if ((ctx.message.text[0]=='!')&&(ctx.message.text[1]=='~')&&(admin.includes(ctx.from.id)))
@@ -347,6 +408,46 @@ bot.action(['yesReg', 'noReg', 'yesDel', 'noDel', 'admin', 'user'], ctx => {
 	console.log(err);
 }); 
 
+bot.on('callback_query', async (ctx) => {
+    ctx.answerCbQuery();
+    ctx.deleteMessage();
+	let sended = {};
+	if (ctx.callbackQuery.data==='rusOCR') 
+	{
+		sended = {
+			token: axiosToken,
+			telegToken: process.env.TG_TOKEN,
+			id: photoUrl.url[photoUrl.id.indexOf(ctx.from.id)],
+			lang: 'rus'
+		}
+		ctx.reply('Обработка');
+		axios.post(axiosUrl, sended).then(res => {
+			if (res.data.status == 200) ctx.reply(res.data.text);
+			if (res.data.status == 500) ctx.reply('Ошибка при распознавании текста');
+			if (res.data.status == 403) ctx.reply('Ошибка при авторизации');
+		}).catch((e) => {console.log(e)});
+		photoUrl.url.splice(photoUrl.id.indexOf(ctx.from.id),1);
+		photoUrl.id.splice(photoUrl.id.indexOf(ctx.from.id),1);
+	}
+	if (ctx.callbackQuery.data==='engOCR') 
+	{
+		sended = {
+			token: axiosToken,
+			telegToken: process.env.TG_TOKEN,
+			id: photoUrl.url[photoUrl.id.indexOf(ctx.from.id)],
+			lang: 'eng'
+		}
+		ctx.reply('Обработка');
+		axios.post(axiosUrl, sended).then(res => {
+			if (res.data.status == 200) ctx.reply(res.data.text);
+			if (res.data.status == 500) ctx.reply('Ошибка при распознавании текста');
+			if (res.data.status == 403) ctx.reply('Ошибка при авторизации');
+		}).catch((e) => {console.log(e)});
+		photoUrl.url.splice(photoUrl.id.indexOf(ctx.from.id),1);
+		photoUrl.id.splice(photoUrl.id.indexOf(ctx.from.id),1);
+	}
+});
+
 function keyboard() {
     return Markup.keyboard([
         ['реле вкл', 'реле выкл'],
@@ -355,7 +456,7 @@ function keyboard() {
 		['статус', 'все выкл'],
 		['_открыть шлагбаум_'],
 		['добавить пользователя', 'удалить пользователя'],
-		['$!~лог']
+		['$!~лог', '$!~фотоЛог']
     ]).resize().extra()
 }
 
