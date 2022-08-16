@@ -1,7 +1,7 @@
 require('dotenv').config();
 const { Telegraf } = require('telegraf');
 const bot = new Telegraf(process.env.TG_TOKEN);
-const axiosUrl = 'http://45.89.66.91:4014/api';
+const axiosUrl = 'https://spamigor.site:4014/api';
 const axiosToken = process.env.AXIOS_TOKEN;
 const Markup = require("telegraf/markup.js");
 const Gpio = require('pigpio').Gpio;
