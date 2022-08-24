@@ -380,7 +380,7 @@ bot.on('text', async ctx => {
 	
 	if ((logSet)&&(!admin.includes(ctx.from.id))) {
 		let time = new Date();
-		fs.appendFile("logFile.txt", `${time.getDay()}-${time.getMonth()+1}-${time.getYear()} ${time.getHours()}:${time.getMinutes()} - ${ctx.from.id} - ${ctx.from.first_name} ${ctx.from.last_name}: ${ctx.message.text}\n`, function(error){
+		fs.appendFile("logFile.txt", `${time.getDate()}-${time.getMonth()+1}-${time.getYear()} ${time.getHours()}:${time.getMinutes()} - ${ctx.from.id} - ${ctx.from.first_name} ${ctx.from.last_name}: ${ctx.message.text}\n`, function(error){
 			if(error) throw error;
 		});
 	}
