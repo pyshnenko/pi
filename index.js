@@ -10,6 +10,21 @@ const fs = require("fs");
 var ni = os.networkInterfaces( );
 const axios = require('axios');
 const apiKey = process.env.API_KEY;
+var imaps = require('imap-simple');
+const simpleParser = require('mailparser').simpleParser;
+const _ = require('lodash');
+
+var configIMAP = {
+    imap: {
+        user: process.env.MAILLOG,
+        password: process.env.MAILPASS,
+        host: 'imap.mail.ru',
+        port: 993,
+        tls: true,
+        authTimeout: 3000
+    }
+};
+let emailBuf = [];
 var city = 'Moscow';
 var regexp = /^[a-z\s]+$/i;
 var reg = /^[а-яёa-z]*$/i;
@@ -17,6 +32,8 @@ var reg = /^[а-яёa-z]*$/i;
 var admin = [];
 admin[0] = 209103348;
 notRoot = [];
+let lostId = [];
+let checkLostId = true;
 var logSet = true;
 let idHistory = [];
 let newAdmin = {
@@ -97,8 +114,18 @@ let myip = ni.wlan0[0].address;
 
 setTimeout(() => {
 	door=0;
-	console.log('Запущено'), 10000
-});
+	console.log('Запущено')}, 1000
+);
+checkMessage();
+setInterval(() => {
+	try { checkMessage();}
+	catch (err) {console.log('nop');};
+	if (emailBuf.length>0) {
+		let pos = emailBuf.length-1;
+		bot.telegram.sendMessage(admin[0], `Получено письмо: ${emailBuf[pos].subject}\n\nс текстом: ${emailBuf[pos].text}\n\n отправитель:\n${emailBuf[pos].from.value[0].address}`);
+		emailBuf.splice(pos, 1);
+	}
+}, 10*60*1000);
 
 LEDblue.digitalWrite(blue);
 LEDred.digitalWrite(red);
@@ -257,7 +284,18 @@ bot.on('text', async ctx => {
 				}, timeDelay);
 			}
 		}
-		else ctx.reply('Нестабильная работа сети интернет. Повторите запрос позднее');
+		else {
+			if (!lostId.includes(ctx.from.id)) lostId.push(ctx.from.id);
+			if ((checkLostId)&&(lostId.length>0)) {
+				checkLostId = false;
+				setTimeout(() => {
+					checkLostId = true;
+					for (let i=0; i<lostId.length; i++)
+						ctx.telegram.sendMessage(lostId[i], 'Интернет-соединение восстановлено. Приношу извинения за неудобства');
+					lostId = [];
+				}, 10000);
+			}
+		}
     } 
 
 	if ((ctx.message.text === 'реле вкл')&&(admin.includes(ctx.from.id))) {
@@ -321,6 +359,7 @@ bot.on('text', async ctx => {
 		await ctx.reply('реле: ' + (rel==1 ? 'вкл' : 'выкл'));
 		await ctx.reply('локальный ip: ' + myip);
 		await ctx.reply('логгирование: ' + ( logSet ? 'вкл' : 'выкл'));
+		await ctx.reply('задержка: ' + timeDelay);
     } 
 	
 	if ((ctx.message.text === 'добавить пользователя')&&(admin.includes(ctx.from.id))) {
@@ -344,6 +383,15 @@ bot.on('text', async ctx => {
 		fs.appendFile("logFile.txt", `${time.getDay()}-${time.getMonth()+1}-${time.getYear()} ${time.getHours()}:${time.getMinutes()} - ${ctx.from.id} - ${ctx.from.first_name} ${ctx.from.last_name}: ${ctx.message.text}\n`, function(error){
 			if(error) throw error;
 		});
+	}
+	
+	if ((admin.includes(ctx.from.id))&&((ctx.message.text.substr(0,5)==='all: ')||(ctx.message.text.substr(0,5)==='All: ')))
+	{
+		trimB = false;
+		for (let i=0; i<notRoot.length; i++)
+			bot.telegram.sendMessage(notRoot[i], ctx.message.text.substr(5));
+		for (let i=0; i<admin.length; i++)
+			bot.telegram.sendMessage(admin[i], ctx.message.text.substr(5));
 	}
 	
 	if ((trimB)&&((admin.includes(ctx.from.id))||(notRoot.includes(ctx.from.id)))) {
@@ -484,6 +532,33 @@ function timeConverter(UNIX_timestamp){
   var sec = a.getSeconds();
   var time = hour + ':' + min + ':' + sec ;
   return time;
+}
+
+async function checkMessage() {
+	await imaps.connect(configIMAP).then(function (connection) {
+		connection.openBox('INBOX').then(function () {
+			var searchCriteria = ['UNSEEN'];
+			var fetchOptions = {
+				bodies: ['HEADER', 'TEXT', ''],
+				markSeen: true
+			};
+			connection.search(searchCriteria, fetchOptions).then(function (messages) {
+				messages.forEach(function (item) {
+					var all = _.find(item.parts, { "which": "" })
+					var id = item.attributes.uid;
+					var idHeader = "Imap-Id: "+id+"\r\n";
+					simpleParser(idHeader+all.body, (err, mail) => {
+						// access to the whole mail object
+						console.log(mail.subject);
+						console.log(mail.from.value[0].address);
+						console.log(mail.text);
+						emailBuf.push(mail);
+						//console.log(mail.html)
+					});
+				});
+			});
+		});
+	});
 }
 
 bot.launch();
