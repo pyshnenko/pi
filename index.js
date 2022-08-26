@@ -123,6 +123,10 @@ setInterval(() => {
 	if (emailBuf.length>0) {
 		let pos = emailBuf.length-1;
 		bot.telegram.sendMessage(admin[0], `Получено письмо: ${emailBuf[pos].subject}\n\nс текстом: ${emailBuf[pos].text}\n\n отправитель:\n${emailBuf[pos].from.value[0].address}`);
+		if ((emailBuf[pos].from.value[0].address==='noreply@rossetimr.ru')&&(emailBuf[pos].subject.includes('Уведомление'))&&(emailBuf[pos].text.includes('Хлябово'))) 
+			//bot.telegram.sendMessage(admin[0], emailBuf[pos].text);
+			for (let i=0; i<notRoot.length; i++)
+				bot.telegram.sendMessage(notRoot[i], emailBuf[pos].text);
 		emailBuf.splice(pos, 1);
 	}
 }, 10*60*1000);
@@ -552,7 +556,11 @@ async function checkMessage() {
 						console.log(mail.subject);
 						console.log(mail.from.value[0].address);
 						console.log(mail.text);
-						emailBuf.push(mail);
+						if (emailBuf.length==0)
+							emailBuf.push(mail);
+						else 
+							if (mail.text!=emailBuf[emailBuf.length-2].text)
+								emailBuf.push(mail);
 						//console.log(mail.html)
 					});
 				});
