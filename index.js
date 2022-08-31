@@ -124,12 +124,12 @@ setInterval(() => {
 		let pos = emailBuf.length-1;
 		bot.telegram.sendMessage(admin[0], `Получено письмо: ${emailBuf[pos].subject}\n\nс текстом: ${emailBuf[pos].text}\n\n отправитель:\n${emailBuf[pos].from.value[0].address}`);
 		if ((emailBuf[pos].from.value[0].address==='noreply@rossetimr.ru')&&(emailBuf[pos].subject.includes('Уведомление'))&&(emailBuf[pos].text.includes('Хлябово'))) 
-			//bot.telegram.sendMessage(admin[0], emailBuf[pos].text);
-			for (let i=0; i<notRoot.length; i++)
-				bot.telegram.sendMessage(notRoot[i], emailBuf[pos].text);
+			bot.telegram.sendMessage(admin[0], emailBuf[pos].text);
+			/*for (let i=0; i<notRoot.length; i++)
+				bot.telegram.sendMessage(notRoot[i], emailBuf[pos].text);*/
 		emailBuf.splice(pos, 1);
 	}
-}, 10*60*1000);
+}, 1*60*1000);
 
 LEDblue.digitalWrite(blue);
 LEDred.digitalWrite(red);
