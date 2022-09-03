@@ -131,6 +131,15 @@ setInterval(() => {
 	}
 }, 1*60*1000);
 
+setInterval(() => {
+	let date = new Date();
+	let mDate = Math.floor(Number(date)/1000);
+	fs.writeFile("rebFile.data", `false\n${mDate}`, function(error) {
+		if(error) throw error;
+		console.log('write done');
+	});
+}, 5*60*1000);
+
 LEDblue.digitalWrite(blue);
 LEDred.digitalWrite(red);
 LEDonrel.digitalWrite(rel);
