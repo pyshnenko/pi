@@ -7,14 +7,19 @@ const Markup = require("telegraf/markup.js");
 const Gpio = require('pigpio').Gpio;
 const os = require( 'os' );
 const fs = require("fs");
-var ni = os.networkInterfaces( );
+let ni = os.networkInterfaces( );
 const axios = require('axios');
 const apiKey = process.env.API_KEY;
-var imaps = require('imap-simple');
+let imaps = require('imap-simple');
 const simpleParser = require('mailparser').simpleParser;
 const _ = require('lodash');
+const WebSocketClient = require('websocket').client;
+const socketPort = '8080/';
 
-var configIMAP = {
+let client = new WebSocketClient();
+let needReb = false;
+
+let configIMAP = {
     imap: {
         user: process.env.MAILLOG,
         password: process.env.MAILPASS,
@@ -25,16 +30,16 @@ var configIMAP = {
     }
 };
 let emailBuf = [];
-var city = 'Moscow';
-var regexp = /^[a-z\s]+$/i;
-var reg = /^[а-яёa-z]*$/i;
+let city = 'Moscow';
+let regexp = /^[a-z\s]+$/i;
+let reg = /^[а-яёa-z]*$/i;
 
-var admin = [];
+let admin = [];
 admin[0] = 209103348;
 notRoot = [];
 let lostId = [];
 let checkLostId = true;
-var logSet = true;
+let logSet = true;
 let idHistory = [];
 let newAdmin = {
 	idSetter: [],
@@ -44,7 +49,7 @@ let newAdmin = {
 }
 let timeDelay = 500;
 
-var photoUrl = {
+let photoUrl = {
 	id: [],
 	url: []
 };
@@ -105,10 +110,10 @@ fs.access("logFilePhoto.txt", function(error){
 });
 
 
-var LEDblue = new Gpio(2, {mode: Gpio.OUTPUT});
-var LEDred = new Gpio(3, {mode: Gpio.OUTPUT});
-var LEDonrel = new Gpio (4, {mode: Gpio.OUTPUT});
-var LEDdoor = new Gpio (17, {mode: Gpio.OUTPUT});
+let LEDblue = new Gpio(2, {mode: Gpio.OUTPUT});
+let LEDred = new Gpio(3, {mode: Gpio.OUTPUT});
+let LEDonrel = new Gpio (4, {mode: Gpio.OUTPUT});
+let LEDdoor = new Gpio (17, {mode: Gpio.OUTPUT});
 let red=0, blue=0, rel=0, door=1;
 let myip = ni.wlan0[0].address;
 
@@ -134,11 +139,13 @@ setInterval(() => {
 setInterval(() => {
 	let date = new Date();
 	let mDate = Math.floor(Number(date)/1000);
-	fs.writeFile("rebFile.data", `false\n${mDate}`, function(error) {
+	let checkReb;
+	needReb ? checkReb = 'true' : checkReb = 'false';
+	fs.writeFile("rebFile.data", `${checkReb}\n${mDate}\n`, function(error) {
 		if(error) throw error;
 		console.log('write done');
 	});
-}, 5*60*1000);
+}, 2.5*60*1000);
 
 LEDblue.digitalWrite(blue);
 LEDred.digitalWrite(red);
@@ -421,6 +428,8 @@ bot.on('text', async ctx => {
 });
 
 bot.action(['yesReg', 'noReg', 'yesDel', 'noDel', 'admin', 'user'], ctx => {
+    ctx.answerCbQuery();
+    ctx.deleteMessage();
 	if (ctx.callbackQuery.data === 'admin') {	
 		admin.push(newAdmin.idSave[newAdmin.idSetter.indexOf(ctx.from.id)]);
 		newAdmin.idSave.splice(newAdmin.idSetter.indexOf(ctx.from.id),1);
@@ -539,27 +548,27 @@ function saveData() {
 }
 
 function timeConverter(UNIX_timestamp){
-  var a = new Date(UNIX_timestamp * 1000);
-  var hour = a.getHours();
-  var min = a.getMinutes();
-  var sec = a.getSeconds();
-  var time = hour + ':' + min + ':' + sec ;
+  let a = new Date(UNIX_timestamp * 1000);
+  let hour = a.getHours();
+  let min = a.getMinutes();
+  let sec = a.getSeconds();
+  let time = hour + ':' + min + ':' + sec ;
   return time;
 }
 
 async function checkMessage() {
 	await imaps.connect(configIMAP).then(function (connection) {
 		connection.openBox('INBOX').then(function () {
-			var searchCriteria = ['UNSEEN'];
-			var fetchOptions = {
+			let searchCriteria = ['UNSEEN'];
+			let fetchOptions = {
 				bodies: ['HEADER', 'TEXT', ''],
 				markSeen: true
 			};
 			connection.search(searchCriteria, fetchOptions).then(function (messages) {
 				messages.forEach(function (item) {
-					var all = _.find(item.parts, { "which": "" })
-					var id = item.attributes.uid;
-					var idHeader = "Imap-Id: "+id+"\r\n";
+					let all = _.find(item.parts, { "which": "" })
+					let id = item.attributes.uid;
+					let idHeader = "Imap-Id: "+id+"\r\n";
 					simpleParser(idHeader+all.body, (err, mail) => {
 						// access to the whole mail object
 						console.log(mail.subject);
@@ -580,3 +589,46 @@ async function checkMessage() {
 
 bot.launch();
 console.log('bot start');
+
+client.on('connectFailed', function(error) {
+    console.log('Connect Error: ' + error.toString());
+	setTimeout(() => {
+		console.log('reconnect');
+		client.connect('wss://spamigor.site:' + socketPort, 'echo-protocol');
+	}, 60*1000)
+});
+
+client.on('connect', function(connection) {
+    console.log('WebSocket Client Connected');
+    connection.on('error', function(error) {
+        console.log("Connection Error: " + error.toString());
+    });
+    connection.on('close', function() {
+        console.log('echo-protocol Connection Closed');
+		setTimeout(() => {
+			console.log('reconnect');
+			client.connect('wss://spamigor.site:' + socketPort, 'echo-protocol');
+		}, 60*1000)
+    });
+    connection.on('message', function(message) {
+        if (message.type === 'utf8') {
+			if (message.utf8Data === 'reboot') {
+				console.log('\x1b[31mREBOOT\x1b[0m');
+				needReb = true;
+				bot.telegram.sendMessage(admin[0], 'REBOOT');
+			}
+            else console.log("Received: '" + message.utf8Data + "'");
+        }
+    });
+    
+    function sendNumber() {
+        if (connection.connected) {
+            var number = new Date();
+            connection.sendUTF('pi: ' + (Number(number)).toString());
+            setTimeout(sendNumber, 60*1000);
+        }
+    }
+    sendNumber();
+});
+
+client.connect('wss://spamigor.site:' + socketPort, 'echo-protocol');
