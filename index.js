@@ -15,6 +15,7 @@ const simpleParser = require('mailparser').simpleParser;
 const _ = require('lodash');
 const WebSocketClient = require('websocket').client;
 const socketPort = '8080/';
+let socket;
 
 let client = new WebSocketClient();
 let needReb = false;
@@ -152,6 +153,7 @@ LEDred.digitalWrite(red);
 LEDonrel.digitalWrite(rel);
 
 bot.start((ctx) => {
+	socket.send(`TM: pi: ${ctx.from.id}: start`);
 	ctx.reply('Привет. Я бот для упрощения жизни');
 	if ((admin.includes(ctx.from.id))||(notRoot.includes(ctx.from.id))) {
 		if (admin.includes(ctx.from.id))
@@ -176,6 +178,7 @@ bot.start((ctx) => {
 bot.help((ctx) => ctx.reply('Данный бот умеет открывать шлагбаум и сообщать погоду\nЕсли клавиатура не появилась, нажми старт или сообщи администратору\nЧтобы узнать погоду, введи название города'));
 
 bot.on('photo', async (ctx) => {	
+	socket.send(`TM: pi: ${ctx.from.id}: photo`);
 	photoUrl.id.push(ctx.from.id);
 	photoUrl.url.push(ctx.message.photo[2].file_id);
 	ctx.replyWithHTML(
@@ -203,6 +206,7 @@ bot.on('photo', async (ctx) => {
 bot.on('text', async ctx => {
 	console.log(ctx.message.text);
 	console.log('id: '+ctx.from.id);
+	socket.send(`TM: pi: ${ctx.from.id}: ${ctx.from.id}`);
 	let trimB = true;
 //	ctx.reply('Сообщение: '+ctx.message.text);
 	if ((ctx.message.text[0]=='~')&&(newAdmin.idDeletter.includes(ctx.from.id)))
@@ -620,6 +624,8 @@ client.on('connect', function(connection) {
             else console.log("Received: '" + message.utf8Data + "'");
         }
     });
+	
+	socket = connection;
     
     function sendNumber() {
         if (connection.connected) {
