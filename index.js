@@ -19,6 +19,9 @@ let socket;
 
 let client = new WebSocketClient();
 let needReb = false;
+let needRest = false;
+let needPull = false;
+let gitRes = '';
 
 let configIMAP = {
     imap: {
@@ -124,6 +127,14 @@ setTimeout(() => {
 );
 checkMessage();
 setInterval(() => {
+	let data = fs.readFileSync("gitPull.txt", "utf8");
+	console.log(data);
+	if (data.substr(0, 5) != 'false') {
+		gitRes=data;
+		fs.writeFile("gitPull.txt", 'false', function(error) {
+			if (error) console.log(error)
+		});
+	}
 	try { checkMessage();}
 	catch (err) {console.log('nop');};
 	if (emailBuf.length>0) {
@@ -142,7 +153,10 @@ setInterval(() => {
 	let mDate = Math.floor(Number(date)/1000);
 	let checkReb;
 	needReb ? checkReb = 'true' : checkReb = 'false';
-	fs.writeFile("rebFile.data", `${checkReb}\n${mDate}\n`, function(error) {
+	let buf = `${checkReb}\n${mDate}\n`;
+	if (needPull) buf+='gitPull=true\n';
+	if (needRest) buf += 'restart';
+	fs.writeFile("rebFile.data", buf, function(error) {
 		if(error) throw error;
 		console.log('write done');
 	});
@@ -206,7 +220,7 @@ bot.on('photo', async (ctx) => {
 bot.on('text', async ctx => {
 	console.log(ctx.message.text);
 	console.log('id: '+ctx.from.id);
-	socket.send(`TM: pi: ${ctx.from.id}: ${ctx.from.id}`);
+	socket.send(`TM: pi: ${ctx.from.id}: ${ctx.message.text}`);
 	let trimB = true;
 //	ctx.reply('Сообщение: '+ctx.message.text);
 	if ((ctx.message.text[0]=='~')&&(newAdmin.idDeletter.includes(ctx.from.id)))
@@ -621,6 +635,18 @@ client.on('connect', function(connection) {
 				needReb = true;
 				bot.telegram.sendMessage(admin[0], 'REBOOT');
 			}
+			if (message.utf8Data === 'restart') {
+				console.log('restart');
+				connection.sendUTF('TM: pi: restart');
+				needRest = true;
+				bot.telegram.sendMessage(admin[0], 'Restart');
+			}
+			if (message.utf8Data === 'gitPull') {
+				console.log('git pull');
+				connection.sendUTF('TM: pi: pull');
+				bot.telegram.sendMessage(admin[0], 'pull');
+				needPull = true;
+			}
             else console.log("Received: '" + message.utf8Data + "'");
         }
     });
@@ -631,6 +657,7 @@ client.on('connect', function(connection) {
         if (connection.connected) {
             var number = new Date();
             connection.sendUTF('pi: ' + (Number(number)).toString());
+			if (gitRes.length>2) { connection.sendUTF(`TM: pi: ${gitRes}`); gitRes = '';}
             setTimeout(sendNumber, 60*1000);
         }
     }
