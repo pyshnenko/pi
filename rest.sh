@@ -27,14 +27,14 @@ do
     /sbin/reboot
   fi
   if [[ "$y" == "gitPull=true" ]]; then
-    fidate=$(date+%s)
+    fidate=$(date +%s)
     echo  "false" > /home/pi/nodeWeb/telegram/rebFile.data
     echo "$fidate" >> /home/pi/nodeWeb/telegram/rebFile.data
     cd /home/pi/nodeWeb/telegram
     git pull > /home/pi/nodeWeb/telegram/gitPull.txt
   fi
   if [[ "$y" == "restart"  ]]; then
-    fidate=$(date+%s)
+    fidate=$(date +%s)
     echo "false" > /home/pi/nodeWeb/telegram/rebFile.data
     echo "$fidate" >> /home/pi/nodeWeb/telegram/rebFile.data
     systemctl restart serv2

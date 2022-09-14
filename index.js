@@ -155,7 +155,7 @@ setInterval(() => {
 	needReb ? checkReb = 'true' : checkReb = 'false';
 	let buf = `${checkReb}\n${mDate}\n`;
 	if (needPull) buf+='gitPull=true\n';
-	if (needRest) buf += 'restart';
+	if (needRest) buf += 'restart\n';
 	fs.writeFile("rebFile.data", buf, function(error) {
 		if(error) throw error;
 		console.log('write done');
