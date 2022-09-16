@@ -1,3 +1,4 @@
+//test
 require('dotenv').config();
 const { Telegraf } = require('telegraf');
 const bot = new Telegraf(process.env.TG_TOKEN);
@@ -154,7 +155,10 @@ setInterval(() => {
 	let checkReb;
 	needReb ? checkReb = 'true' : checkReb = 'false';
 	let buf = `${checkReb}\n${mDate}\n`;
-	if (needPull) buf+='gitPull=true\n';
+	if (needPull) {
+		buf+='gitPull=true\n';
+		needPull = false;
+	}
 	if (needRest) buf += 'restart\n';
 	fs.writeFile("rebFile.data", buf, function(error) {
 		if(error) throw error;
