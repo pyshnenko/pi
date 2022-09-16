@@ -226,23 +226,30 @@ bot.on('text', async ctx => {
 	if ((ctx.message.text[0]=='~')&&(newAdmin.idDeletter.includes(ctx.from.id)))
 	{
 		trimB = false;
-		let buf = ctx.message.text.substr(1);
-		if ((Number(buf)>=0)&&((admin.includes(Number(buf)))||(notRoot.includes(Number(buf))))) {
-			newAdmin.idDelete[newAdmin.idDeletter.indexOf(ctx.from.id)]=Number(buf);
-			ctx.replyWithHTML('id: ' + buf +
-			'Удаляем?', Markup.inlineKeyboard([
-				Markup.callbackButton('Да', 'yesDel'),
-				Markup.callbackButton('Нет', 'noDel')
-			], {columns: 2}).extra());
+		if (ctx.message.text==='~назад') {
+			newAdmin.idDeletter.splice(newAdmin.idDeletter.indexOf(ctx.from.id), 1);
+			ctx.replyWithHTML(
+				'Задержка задается через !~\nзапись лога: $!~старт\nостановить запись: $!~стоп\nлог: $!~лог\nВот клавиатура для всякого\n',
+				keyboard());
 		}
 		else {
-			newAdmin.idDeletter.splice(newAdmin.idDeletter.indexOf(ctx.from.id),1);
-			ctx.replyWithHTML(
-				'Не удалось удалить ID. проверь ввод и повтори\n',
-				keyboard())
+			let buf = ctx.message.text.substr(1);
+			if ((Number(buf)>=0)&&((admin.includes(Number(buf)))||(notRoot.includes(Number(buf))))) {
+				newAdmin.idDelete[newAdmin.idDeletter.indexOf(ctx.from.id)]=Number(buf);
+				ctx.replyWithHTML('id: ' + buf +
+				'Удаляем?', Markup.inlineKeyboard([
+					Markup.callbackButton('Да', 'yesDel'),
+					Markup.callbackButton('Нет', 'noDel')
+				], {columns: 2}).extra());
 			}
-			saveData();
-			
+			else {
+				newAdmin.idDeletter.splice(newAdmin.idDeletter.indexOf(ctx.from.id),1);
+				ctx.replyWithHTML(
+					'Не удалось удалить ID. проверь ввод и повтори\n',
+					keyboard())
+				}
+		}
+	saveData();
 	}
 	
 	if ((admin.includes(ctx.from.id))&&(ctx.message.text==='$!~старт'))
@@ -411,6 +418,7 @@ bot.on('text', async ctx => {
 		let mas = [];
 		for (i=0;i<admin.length; i++) mas.push('~' + admin[i].toString());
 		for (i=0;i<notRoot.length; i++) if (notRoot[i]!=null) mas.push('~' + notRoot[i].toString());
+		mas.push('~назад');
 		ctx.replyWithHTML('Выбери id из предложенных', Markup.keyboard(mas).resize().extra());
 		newAdmin.idDeletter.push(ctx.from.id);
 		saveData();
