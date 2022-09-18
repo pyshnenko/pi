@@ -12,7 +12,7 @@ do
       fidate=$(date +%s)
       fidate=$((fidate+90000))
       echo "$fidate" >> /home/pi/nodeWeb/telegram/rebFile.data
-      echo "autoreboot at $fullDate" > /home/pi/timeReboot.txt
+      echo "autoreboot at $fullDate" >> /home/pi/timeReboot.txt
       /sbin/reboot
     else
       echo "date < 5"
@@ -23,20 +23,34 @@ do
     fidate=$((fidate + 90000))
     echo "false" > /home/pi/nodeWeb/telegram/rebFile.data
     echo "$fidate" >> /home/pi/nodeWeb/telegram/rebFile.data
-    echo "reboot at $fullDate" > /home/pi/timeReboot.txt
+    echo "reboot at $fullDate" >> /home/pi/timeReboot.txt
     /sbin/reboot
+  fi
+  if [[ "$y" == "gitPush=true" ]]; then
+    fidate=$(date +%s)
+	echo  "false" > /home/pi/nodeWeb/telegram/rebFile.data
+	echo "$fidate" >> /home/pi/nodeWeb/telegram/rebFile.data
+	cd /home/pi/nodeWeb/telegram
+	git add .
+	git commit -m "autoUpdate $fullDate"
+	git push > /home/pi/nodeWeb/telegram/gitPull.txt
+	echo "git push at $fullDate"
   fi
   if [[ "$y" == "gitPull=true" ]]; then
     fidate=$(date +%s)
     echo  "false" > /home/pi/nodeWeb/telegram/rebFile.data
     echo "$fidate" >> /home/pi/nodeWeb/telegram/rebFile.data
     cd /home/pi/nodeWeb/telegram
+	git fetch --all
+	git reset --hard origin/main
     git pull > /home/pi/nodeWeb/telegram/gitPull.txt
+    echo "git pull at $fullDate" >> /home/pi/timeReboot.txt
   fi
   if [[ "$y" == "restart"  ]]; then
     fidate=$(date +%s)
     echo "false" > /home/pi/nodeWeb/telegram/rebFile.data
     echo "$fidate" >> /home/pi/nodeWeb/telegram/rebFile.data
+    echo "restart at $fullDate" >> /home/pi/timeReboot.txt
     systemctl restart serv2
   fi
   i=$((i+1))

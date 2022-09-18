@@ -22,6 +22,7 @@ let client = new WebSocketClient();
 let needReb = false;
 let needRest = false;
 let needPull = false;
+let needPush = false;
 let gitRes = '';
 
 let configIMAP = {
@@ -159,6 +160,10 @@ setInterval(() => {
 		buf+='gitPull=true\n';
 		needPull = false;
 	}
+	if (needPush) {
+		buf+='gitPush=true\n';
+		needPush = false;
+	}
 	if (needRest) buf += 'restart\n';
 	fs.writeFile("rebFile.data", buf, function(error) {
 		if(error) throw error;
@@ -196,7 +201,7 @@ bot.start((ctx) => {
 bot.help((ctx) => ctx.reply('Данный бот умеет открывать шлагбаум и сообщать погоду\nЕсли клавиатура не появилась, нажми старт или сообщи администратору\nЧтобы узнать погоду, введи название города'));
 
 bot.on('photo', async (ctx) => {	
-	socket.send(`TM: pi: ${ctx.from.id}: photo`);
+	socket.send(`TM: pi: ${ctx.from.id}, ${ctx.from.first_name}: photo`);
 	photoUrl.id.push(ctx.from.id);
 	photoUrl.url.push(ctx.message.photo[2].file_id);
 	ctx.replyWithHTML(
@@ -224,7 +229,7 @@ bot.on('photo', async (ctx) => {
 bot.on('text', async ctx => {
 	console.log(ctx.message.text);
 	console.log('id: '+ctx.from.id);
-	socket.send(`TM: pi: ${ctx.from.id}: ${ctx.message.text}`);
+	socket.send(`TM: pi: ${ctx.from.id}, ${ctx.from.first_name}: ${ctx.message.text}`);
 	let trimB = true;
 //	ctx.reply('Сообщение: '+ctx.message.text);
 	if ((ctx.message.text[0]=='~')&&(newAdmin.idDeletter.includes(ctx.from.id)))
@@ -625,7 +630,7 @@ client.on('connectFailed', function(error) {
 	setTimeout(() => {
 		console.log('reconnect');
 		client.connect('wss://spamigor.site:' + socketPort, 'echo-protocol');
-	}, 60*1000)
+	}, 10*1000)
 });
 
 client.on('connect', function(connection) {
@@ -638,7 +643,7 @@ client.on('connect', function(connection) {
 		setTimeout(() => {
 			console.log('reconnect');
 			client.connect('wss://spamigor.site:' + socketPort, 'echo-protocol');
-		}, 60*1000)
+		}, 10*1000)
     });
     connection.on('message', function(message) {
         if (message.type === 'utf8') {
@@ -658,6 +663,12 @@ client.on('connect', function(connection) {
 				connection.sendUTF('TM: pi: pull');
 				bot.telegram.sendMessage(admin[0], 'pull');
 				needPull = true;
+			}
+			if (message.utf8Data === 'gitPush') {
+				console.log('git push');
+				connection.sendUTF('TM: pi: push');
+				bot.telegram.sendMessage(admin[0], 'push');
+				needPush = true;
 			}
             else console.log("Received: '" + message.utf8Data + "'");
         }
