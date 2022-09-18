@@ -23,6 +23,7 @@ let needReb = false;
 let needRest = false;
 let needPull = false;
 let needPush = false;
+let needDel = false;
 let gitRes = '';
 
 let configIMAP = {
@@ -156,14 +157,17 @@ setInterval(() => {
 	let checkReb;
 	needReb ? checkReb = 'true' : checkReb = 'false';
 	let buf = `${checkReb}\n${mDate}\n`;
-	if (needPull) {
-		buf+='gitPull=true\n';
-		needPull = false;
+	if (needDel) {
+		if (needPull) {
+			buf+='gitPull=true\n';
+			needPull = false;
+		}
+		if (needPush) {
+			buf+='gitPush=true\n';
+			needPush = false;
+		}
 	}
-	if (needPush) {
-		buf+='gitPush=true\n';
-		needPush = false;
-	}
+	needDel=!needDel;
 	if (needRest) buf += 'restart\n';
 	fs.writeFile("rebFile.data", buf, function(error) {
 		if(error) throw error;
