@@ -23,7 +23,7 @@ let needReb = false;
 let needRest = false;
 let needPull = false;
 let needPush = false;
-let needDel = false;
+let needDel = true;
 let gitRes = '';
 
 let configIMAP = {
