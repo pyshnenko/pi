@@ -1,4 +1,3 @@
-//test
 require('dotenv').config();
 const { Telegraf } = require('telegraf');
 const bot = new Telegraf(process.env.TG_TOKEN);
@@ -17,14 +16,10 @@ const _ = require('lodash');
 const WebSocketClient = require('websocket').client;
 const socketPort = '8080/';
 let socket;
+let socketConnect = false;
 
 let client = new WebSocketClient();
 let needReb = false;
-let needRest = false;
-let needPull = false;
-let needPush = false;
-let needDel = false;
-let gitRes = '';
 
 let configIMAP = {
     imap: {
@@ -130,14 +125,6 @@ setTimeout(() => {
 );
 checkMessage();
 setInterval(() => {
-	let data = fs.readFileSync("gitPull.txt", "utf8");
-	console.log(data);
-	if (data.substr(0, 5) != 'false') {
-		gitRes=data;
-		fs.writeFile("gitPull.txt", 'false', function(error) {
-			if (error) console.log(error)
-		});
-	}
 	try { checkMessage();}
 	catch (err) {console.log('nop');};
 	if (emailBuf.length>0) {
@@ -156,18 +143,7 @@ setInterval(() => {
 	let mDate = Math.floor(Number(date)/1000);
 	let checkReb;
 	needReb ? checkReb = 'true' : checkReb = 'false';
-	let buf = `${checkReb}\n${mDate}\n`;
-	if (needPull) {
-		buf+='gitPull=true\n';
-		if (needDel) needPull = false;
-	}
-	if (needPush) {
-		buf+='gitPush=true\n';
-		if (needDel) needPush = false;
-	}
-	needDel=!needDel;
-	if (needRest) buf += 'restart\n';
-	fs.writeFile("rebFile.data", buf, function(error) {
+	fs.writeFile("rebFile.data", `${checkReb}\n${mDate}\n`, function(error) {
 		if(error) throw error;
 		console.log('write done');
 	});
@@ -178,7 +154,7 @@ LEDred.digitalWrite(red);
 LEDonrel.digitalWrite(rel);
 
 bot.start((ctx) => {
-	socket.send(`TM: pi: ${ctx.from.id}: start`);
+	socketSend(`${ctx.from.id}: start`);
 	ctx.reply('Привет. Я бот для упрощения жизни');
 	if ((admin.includes(ctx.from.id))||(notRoot.includes(ctx.from.id))) {
 		if (admin.includes(ctx.from.id))
@@ -203,7 +179,7 @@ bot.start((ctx) => {
 bot.help((ctx) => ctx.reply('Данный бот умеет открывать шлагбаум и сообщать погоду\nЕсли клавиатура не появилась, нажми старт или сообщи администратору\nЧтобы узнать погоду, введи название города'));
 
 bot.on('photo', async (ctx) => {	
-	socket.send(`TM: pi: ${ctx.from.id}, ${ctx.from.first_name}: photo`);
+	socketSend(`${ctx.from.id}: photo`);
 	photoUrl.id.push(ctx.from.id);
 	photoUrl.url.push(ctx.message.photo[2].file_id);
 	ctx.replyWithHTML(
@@ -231,36 +207,29 @@ bot.on('photo', async (ctx) => {
 bot.on('text', async ctx => {
 	console.log(ctx.message.text);
 	console.log('id: '+ctx.from.id);
-	socket.send(`TM: pi: ${ctx.from.id}, ${ctx.from.first_name}: ${ctx.message.text}`);
+	socketSend(`${ctx.from.id}: ${ctx.from.id}`);
 	let trimB = true;
 //	ctx.reply('Сообщение: '+ctx.message.text);
 	if ((ctx.message.text[0]=='~')&&(newAdmin.idDeletter.includes(ctx.from.id)))
 	{
 		trimB = false;
-		if (ctx.message.text==='~назад') {
-			newAdmin.idDeletter.splice(newAdmin.idDeletter.indexOf(ctx.from.id), 1);
-			ctx.replyWithHTML(
-				'Задержка задается через !~\nзапись лога: $!~старт\nостановить запись: $!~стоп\nлог: $!~лог\nВот клавиатура для всякого\n',
-				keyboard());
+		let buf = ctx.message.text.substr(1);
+		if ((Number(buf)>=0)&&((admin.includes(Number(buf)))||(notRoot.includes(Number(buf))))) {
+			newAdmin.idDelete[newAdmin.idDeletter.indexOf(ctx.from.id)]=Number(buf);
+			ctx.replyWithHTML('id: ' + buf +
+			'Удаляем?', Markup.inlineKeyboard([
+				Markup.callbackButton('Да', 'yesDel'),
+				Markup.callbackButton('Нет', 'noDel')
+			], {columns: 2}).extra());
 		}
 		else {
-			let buf = ctx.message.text.substr(1);
-			if ((Number(buf)>=0)&&((admin.includes(Number(buf)))||(notRoot.includes(Number(buf))))) {
-				newAdmin.idDelete[newAdmin.idDeletter.indexOf(ctx.from.id)]=Number(buf);
-				ctx.replyWithHTML('id: ' + buf +
-				'Удаляем?', Markup.inlineKeyboard([
-					Markup.callbackButton('Да', 'yesDel'),
-					Markup.callbackButton('Нет', 'noDel')
-				], {columns: 2}).extra());
+			newAdmin.idDeletter.splice(newAdmin.idDeletter.indexOf(ctx.from.id),1);
+			ctx.replyWithHTML(
+				'Не удалось удалить ID. проверь ввод и повтори\n',
+				keyboard())
 			}
-			else {
-				newAdmin.idDeletter.splice(newAdmin.idDeletter.indexOf(ctx.from.id),1);
-				ctx.replyWithHTML(
-					'Не удалось удалить ID. проверь ввод и повтори\n',
-					keyboard())
-				}
-		}
-	saveData();
+			saveData();
+			
 	}
 	
 	if ((admin.includes(ctx.from.id))&&(ctx.message.text==='$!~старт'))
@@ -429,7 +398,6 @@ bot.on('text', async ctx => {
 		let mas = [];
 		for (i=0;i<admin.length; i++) mas.push('~' + admin[i].toString());
 		for (i=0;i<notRoot.length; i++) if (notRoot[i]!=null) mas.push('~' + notRoot[i].toString());
-		mas.push('~назад');
 		ctx.replyWithHTML('Выбери id из предложенных', Markup.keyboard(mas).resize().extra());
 		newAdmin.idDeletter.push(ctx.from.id);
 		saveData();
@@ -627,7 +595,14 @@ async function checkMessage() {
 bot.launch();
 console.log('bot start');
 
+function socketSend(message) {
+	if (socketConnect) {
+		socket.sendUTF('TM: pi: ' + message);
+	}
+}
+
 client.on('connectFailed', function(error) {
+	socketConnect = false;
     console.log('Connect Error: ' + error.toString());
 	setTimeout(() => {
 		console.log('reconnect');
@@ -636,11 +611,14 @@ client.on('connectFailed', function(error) {
 });
 
 client.on('connect', function(connection) {
+	socketConnect = true;
     console.log('WebSocket Client Connected');
     connection.on('error', function(error) {
+		socketConnect = false;
         console.log("Connection Error: " + error.toString());
     });
     connection.on('close', function() {
+		socketConnect = false;
         console.log('echo-protocol Connection Closed');
 		setTimeout(() => {
 			console.log('reconnect');
@@ -648,29 +626,12 @@ client.on('connect', function(connection) {
 		}, 10*1000)
     });
     connection.on('message', function(message) {
+		socketConnect = true;
         if (message.type === 'utf8') {
 			if (message.utf8Data === 'reboot') {
 				console.log('\x1b[31mREBOOT\x1b[0m');
 				needReb = true;
 				bot.telegram.sendMessage(admin[0], 'REBOOT');
-			}
-			if (message.utf8Data === 'restart') {
-				console.log('restart');
-				connection.sendUTF('TM: pi: restart');
-				needRest = true;
-				bot.telegram.sendMessage(admin[0], 'Restart');
-			}
-			if (message.utf8Data === 'gitPull') {
-				console.log('git pull');
-				connection.sendUTF('TM: pi: pull');
-				bot.telegram.sendMessage(admin[0], 'pull');
-				needPull = true;
-			}
-			if (message.utf8Data === 'gitPush') {
-				console.log('git push');
-				connection.sendUTF('TM: pi: push');
-				bot.telegram.sendMessage(admin[0], 'push');
-				needPush = true;
 			}
             else console.log("Received: '" + message.utf8Data + "'");
         }
@@ -682,7 +643,6 @@ client.on('connect', function(connection) {
         if (connection.connected) {
             var number = new Date();
             connection.sendUTF('pi: ' + (Number(number)).toString());
-			if (gitRes.length>2) { connection.sendUTF(`TM: pi: ${gitRes}`); gitRes = '';}
             setTimeout(sendNumber, 60*1000);
         }
     }
