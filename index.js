@@ -132,7 +132,7 @@ setTimeout(() => {
 checkMessage();
 setInterval(() => {
 	let data = fs.readFileSync("gitPull.txt", "utf8");
-	console.log(data);
+	//console.log(data);
 	if (data.substr(0, 5) != 'false') {
 		gitRes=data;
 		fs.writeFile("gitPull.txt", 'false', function(error) {
@@ -626,8 +626,21 @@ async function checkMessage() {
 	});
 }
 
-bot.launch();
-console.log('bot start');
+bot.handleError((err) => {
+	console.log('handler: '+err.toString());
+	socketSend('handler: '+err.toString());
+});
+
+bot.on('error', (err) => console.log('on '+err.toString()))
+
+try {
+	bot.launch();
+	console.log('bot start');
+}
+catch (err) {
+	console.log('try catch err: '+err.toString());
+	socketSend('try '+err.toString());
+}
 
 function socketSend (message) {
 	if (socketConnect) socket.sendUTF('TM: pi: ' + message);
@@ -682,6 +695,11 @@ client.on('connect', function(connection) {
 				connection.sendUTF('TM: pi: push');
 				bot.telegram.sendMessage(admin[0], 'push');
 				needPush = true;
+			}
+			if (message.utf8Data === 'botReconnect') {
+				console.log('reconnect');
+				connection.sendUTF('TM: pi: reconnect');
+				bot.launch();
 			}
             else console.log("Received: '" + message.utf8Data + "'");
         }
