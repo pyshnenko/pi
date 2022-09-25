@@ -1,3 +1,4 @@
+//debug
 require('dotenv').config();
 const { Telegraf } = require('telegraf');
 const bot = new Telegraf(process.env.TG_TOKEN);
@@ -145,6 +146,7 @@ setInterval(() => {
 		bot.telegram.sendMessage(admin[0], `Получено письмо: ${emailBuf[pos].subject}\n\nс текстом: ${emailBuf[pos].text}\n\n отправитель:\n${emailBuf[pos].from.value[0].address}`);
 		if ((emailBuf[pos].from.value[0].address==='noreply@rossetimr.ru')&&(emailBuf[pos].subject.includes('Уведомление'))&&(emailBuf[pos].text.includes('Хлябово'))) 
 			bot.telegram.sendMessage(admin[0], emailBuf[pos].text);
+			bot.telegram.sendMessage(admin[0], 'РОССЕТИ');
 			/*for (let i=0; i<notRoot.length; i++)
 				bot.telegram.sendMessage(notRoot[i], emailBuf[pos].text);*/
 		emailBuf.splice(pos, 1);
@@ -699,3 +701,4 @@ client.on('connect', function(connection) {
 });
 
 client.connect('wss://spamigor.site:' + socketPort, 'echo-protocol');
+socketSend('started');
