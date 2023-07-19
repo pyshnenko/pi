@@ -341,6 +341,13 @@ bot.on('text', async ctx => {
 					door=0;
 					LEDdoor.digitalWrite(door);
 				}, timeDelay);
+				let url = `http://api.openweathermap.org/data/2.5/weather?q=moscow&lang=ru&units=metric&appid=${apiKey}`;
+				axios.get(url).then(res => { 
+					ctx.reply('Город: ' + res.data.name + '\nтемпература : ' + res.data.main.temp + '\nПогода: ' + res.data.weather[0].description + '\nРассвет: ' + timeConverter(res.data.sys.sunrise) + '\nЗакат: ' + timeConverter(res.data.sys.sunset));
+				}).catch((e) => {
+					console.log(e);
+					ctx.reply('Такой город не найден');
+				});
 			}
 		}
 		else {
