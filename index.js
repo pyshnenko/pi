@@ -195,7 +195,7 @@ bot.start((ctx) => {
 				]).extra())
 	}
 	else {
-		ctx.reply('Я не нахожу Вас в списках. Свяжитесь с администратором и сообщите ему свой идентификатор:\n' + (ctx.from.id).toString());
+		ctx.reply('Я не нахожу Вас в списках. Свяжитесь с @pysh94 и сообщите ему свой идентификатор:\n' + (ctx.from.id).toString());
 		idHistory.push('~' + ctx.from.id.toString());
 		while (idHistory.length>7) idHistory.splice(0,1);
 		saveData();
