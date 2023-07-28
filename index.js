@@ -346,7 +346,7 @@ bot.on('text', async ctx => {
 					ctx.reply('Город: ' + res.data.name + '\nтемпература : ' + res.data.main.temp + '\nПогода: ' + res.data.weather[0].description + '\nРассвет: ' + timeConverter(res.data.sys.sunrise) + '\nЗакат: ' + timeConverter(res.data.sys.sunset));
 				}).catch((e) => {
 					console.log(e);
-					ctx.reply('Такой город не найден');
+					//ctx.reply('Такой город не найден');
 				});
 			}
 		}
