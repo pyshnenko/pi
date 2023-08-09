@@ -2,7 +2,7 @@
 require('dotenv').config();
 const { Telegraf } = require('telegraf');
 const bot = new Telegraf(process.env.TG_TOKEN);
-const axiosUrl = 'https://spamigor.site:4014/api';
+const axiosUrl = 'https://spamigor.ru:4014/api';
 const axiosToken = process.env.AXIOS_TOKEN;
 const Markup = require("telegraf/markup.js");
 const Gpio = require('pigpio').Gpio;
@@ -659,7 +659,7 @@ client.on('connectFailed', function(error) {
 	socketConnect = false;
 	setTimeout(() => {
 		console.log('reconnect');
-		client.connect('wss://spamigor.site:' + socketPort, 'echo-protocol');
+		client.connect('wss://spamigor.ru:' + socketPort, 'echo-protocol');
 	}, 10*1000)
 });
 
@@ -675,7 +675,7 @@ client.on('connect', function(connection) {
         console.log('echo-protocol Connection Closed');
 		setTimeout(() => {
 			console.log('reconnect');
-			client.connect('wss://spamigor.site:' + socketPort, 'echo-protocol');
+			client.connect('wss://spamigor.ru:' + socketPort, 'echo-protocol');
 		}, 10*1000)
     });
     connection.on('message', function(message) {
@@ -726,5 +726,5 @@ client.on('connect', function(connection) {
     sendNumber();
 });
 
-client.connect('wss://spamigor.site:' + socketPort, 'echo-protocol');
+client.connect('wss://spamigor.ru:' + socketPort, 'echo-protocol');
 socketSend('started');
