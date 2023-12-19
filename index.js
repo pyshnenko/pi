@@ -196,6 +196,7 @@ bot.start((ctx) => {
 	}
 	else {
 		ctx.reply('Я не нахожу Вас в списках. Свяжитесь с @pysh94 и сообщите ему свой идентификатор:\n' + (ctx.from.id).toString());
+		bot.telegram.sendMessage(admin[0], `Пользователь ${ctx.from.id} - ${ctx.from.first_name} - ${ctx.from.last_name} не в базе`); 
 		idHistory.push('~' + ctx.from.id.toString());
 		while (idHistory.length>7) idHistory.splice(0,1);
 		saveData();
