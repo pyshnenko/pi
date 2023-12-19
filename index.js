@@ -480,11 +480,11 @@ bot.action(['yesReg', 'noReg', 'yesDel', 'noDel', 'admin', 'user'], ctx => {
     ctx.deleteMessage();
 	if (ctx.callbackQuery.data === 'admin') {	
 		admin.push(newAdmin.idSave[newAdmin.idSetter.indexOf(ctx.from.id)]);
-		newAdmin.idSave.splice(newAdmin.idSetter.indexOf(ctx.from.id),1);
-		newAdmin.idSetter.splice(newAdmin.idSetter.indexOf(ctx.from.id),1);
 		bot.telegram.sendMessage(newAdmin.idSave[newAdmin.idSetter.indexOf(ctx.from.id)], 'Добро пожаловать', 
 			keyboard()
 		)
+		newAdmin.idSave.splice(newAdmin.idSetter.indexOf(ctx.from.id),1);
+		newAdmin.idSetter.splice(newAdmin.idSetter.indexOf(ctx.from.id),1);
 		saveData();		
 		ctx.replyWithHTML(
 			'Готово',
@@ -495,14 +495,14 @@ bot.action(['yesReg', 'noReg', 'yesDel', 'noDel', 'admin', 'user'], ctx => {
 	if (ctx.callbackQuery.data === 'user') {
         ctx.deleteMessage();
 		notRoot.push(newAdmin.idSave[newAdmin.idSetter.indexOf(ctx.from.id)]);
-		newAdmin.idSave.splice(newAdmin.idSetter.indexOf(ctx.from.id),1);
-		newAdmin.idSetter.splice(newAdmin.idSetter.indexOf(ctx.from.id),1);
 		bot.telegram.sendMessage(newAdmin.idSave[newAdmin.idSetter.indexOf(ctx.from.id)], 
 			'Вот кнопка для шлагбаума\n',
 			Markup.keyboard([
 				['_открыть шлагбаум_']
 			]).extra()
 		) 
+		newAdmin.idSave.splice(newAdmin.idSetter.indexOf(ctx.from.id),1);
+		newAdmin.idSetter.splice(newAdmin.idSetter.indexOf(ctx.from.id),1);
 		saveData();		
 		ctx.replyWithHTML(
 			'Готово',
